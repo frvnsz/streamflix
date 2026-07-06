@@ -3,6 +3,7 @@ package com.streamflixreborn.streamflix.activities.main
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.content.res.ColorStateList
 import android.os.Build
 import android.os.Bundle
@@ -135,9 +136,10 @@ class MainMobileActivity : FragmentActivity() {
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as NavHostFragment
         val navController = navHost.navController
 
+        val isTvDevice = packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
+            resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK == Configuration.UI_MODE_TYPE_TELEVISION
         if (BuildConfig.APP_LAYOUT == "tv" ||
-            (BuildConfig.APP_LAYOUT != "mobile" &&
-                packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK))
+            (BuildConfig.APP_LAYOUT != "mobile" && isTvDevice)
         ) {
             finish()
             startActivity(Intent(this, MainTvActivity::class.java))

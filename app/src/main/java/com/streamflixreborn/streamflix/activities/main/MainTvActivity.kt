@@ -2,6 +2,7 @@ package com.streamflixreborn.streamflix.activities.main
 
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -74,7 +75,9 @@ class MainTvActivity : FragmentActivity() {
 
         adjustLayoutDelta(null, null)
 
-        if (BuildConfig.APP_LAYOUT == "mobile" || (BuildConfig.APP_LAYOUT != "tv" && !packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK))) {
+        val isTvDevice = packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
+            resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK == Configuration.UI_MODE_TYPE_TELEVISION
+        if (BuildConfig.APP_LAYOUT == "mobile" || (BuildConfig.APP_LAYOUT != "tv" && !isTvDevice)) {
             finish()
             startActivity(Intent(this, MainMobileActivity::class.java))
             return
