@@ -1,15 +1,9 @@
 package com.streamflixreborn.streamflix.fragments.search
 
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.KeyEvent
-import android.view.animation.AlphaAnimation
-import android.view.animation.Animation
-import android.view.inputmethod.EditorInfo
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -29,7 +23,6 @@ import com.streamflixreborn.streamflix.utils.CacheUtils
 import com.streamflixreborn.streamflix.utils.LoggingUtils
 import com.streamflixreborn.streamflix.utils.UserPreferences
 import com.streamflixreborn.streamflix.utils.VoiceRecognitionHelper
-import com.streamflixreborn.streamflix.utils.hideKeyboard
 import com.streamflixreborn.streamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
 import androidx.navigation.fragment.findNavController
@@ -143,8 +136,8 @@ class SearchTvFragment : Fragment() {
                                     LoggingUtils.showErrorDialog(requireContext(), state.error)
                                 }
                                 binding.vgvSearch.visibility = View.INVISIBLE
-                                binding.etSearch.nextFocusDownId = binding.isLoading.btnIsLoadingRetry.id
-                                binding.isLoading.btnIsLoadingRetry.nextFocusUpId = binding.etSearch.id
+                                binding.wheelKeyboard.nextFocusDownId = binding.isLoading.btnIsLoadingRetry.id
+                                binding.isLoading.btnIsLoadingRetry.nextFocusUpId = binding.wheelKeyboard.id
                             }
                         }
                     }
@@ -160,8 +153,7 @@ class SearchTvFragment : Fragment() {
     }
 
     private fun submitSearch(): Boolean {
-        val query = binding.etSearch.text?.toString().orEmpty()
-        hideKeyboard()
+        val query = binding.wheelKeyboard.getText()
 
         if (isGlobalSearchChecked) {
             if (query.isBlank()) {
@@ -179,9 +171,9 @@ class SearchTvFragment : Fragment() {
     private fun initializeSearch() {
         val isIptv = UserPreferences.currentProvider is IptvProvider
         val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-        binding.etSearch.hint = getString(hintStringRes)
+        binding.wheelKeyboard.hintText = getString(hintStringRes)
 
-        binding.llGlobalSearch.nextFocusUpId = binding.etSearch.id
+        binding.llGlobalSearch.nextFocusUpId = binding.wheelKeyboard.id
         binding.vgvSearch.nextFocusUpId = binding.llGlobalSearch.id
 
         binding.llGlobalSearch.setOnClickListener {
@@ -191,105 +183,34 @@ class SearchTvFragment : Fragment() {
             )
         }
 
-        binding.etSearch.apply {
-            setOnEditorActionListener { _, actionId, event ->
-                val isSubmitAction =
-                    actionId == EditorInfo.IME_ACTION_SEARCH ||
-                        actionId == EditorInfo.IME_ACTION_DONE ||
-                        actionId == EditorInfo.IME_NULL
-                val isSubmitKey =
-                    event?.action == KeyEvent.ACTION_DOWN &&
-                        (event.keyCode == KeyEvent.KEYCODE_ENTER ||
-                            event.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)
-
-                if (isSubmitAction || isSubmitKey) {
-                    return@setOnEditorActionListener submitSearch()
+        binding.wheelKeyboard.apply {
+            onTextChanged = { query ->
+                // Keep the existing SearchViewModel query source single: the wheel writes
+                // through submit/search actions instead of maintaining a parallel provider path.
+                if (query.isEmpty() && viewModel.query.isNotEmpty()) {
+                    viewModel.search("")
                 }
-                return@setOnEditorActionListener false
             }
-
-            setOnKeyListener { _, keyCode, event ->
-                if (event.action != KeyEvent.ACTION_DOWN) {
-                    return@setOnKeyListener false
-                }
-
-                if (keyCode == KeyEvent.KEYCODE_BACK) {
-                    return@setOnKeyListener focusSearchContent()
-                }
-
-                if (
-                    keyCode == KeyEvent.KEYCODE_ENTER ||
-                    keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
-                    keyCode == KeyEvent.KEYCODE_SEARCH
-                ) {
-                    return@setOnKeyListener submitSearch()
-                }
-
-                false
-            }
-
-            addTextChangedListener(object : TextWatcher {
-                override fun afterTextChanged(s: Editable?) {
-                    if (s.isNullOrBlank()) {
-                                val isIptv = UserPreferences.currentProvider is IptvProvider
-        val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-        binding.etSearch.hint = getString(hintStringRes)
-                    }
-                }
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            })
-        }
-
-        val blink = AlphaAnimation(1f, 0.3f).apply {
-            duration = 500
-            repeatCount = Animation.INFINITE
-            repeatMode = Animation.REVERSE
+            onSearch = { submitSearch() }
+            onDone = { submitSearch() }
+            onVoiceSearch = { if (!voiceHelper.isListening) voiceHelper.startWithPermissionCheck() }
         }
 
         voiceHelper = VoiceRecognitionHelper(
             fragment = this,
             onResult = { query ->
-                binding.btnSearchVoice.clearAnimation()
-                binding.etSearch.setText(query)
+                binding.wheelKeyboard.alpha = 1f
+                binding.wheelKeyboard.setText(query)
                 viewModel.search(query)
             },
             onError = { msg ->
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
-                binding.btnSearchVoice.clearAnimation()
-                        val isIptv = UserPreferences.currentProvider is IptvProvider
-        val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-        binding.etSearch.hint = getString(hintStringRes)
+                binding.wheelKeyboard.alpha = 1f
             },
             onListeningStateChanged = { isListening ->
-                binding.btnSearchVoice.startAnimation(blink)
-                binding.etSearch.hint = getString(R.string.voice_prompt)
+                binding.wheelKeyboard.alpha = if (isListening) 0.55f else 1f
             }
         )
-
-        binding.btnSearchVoice.apply {
-            requestFocus()
-            visibility = if (voiceHelper.isAvailable()) View.VISIBLE else View.GONE
-            setOnClickListener { if (!voiceHelper.isListening) voiceHelper.startWithPermissionCheck() }
-        }
-
-        listOf(binding.btnSearchClear, binding.btnSearchVoice, binding.llGlobalSearch).forEach { view ->
-            view.setOnKeyListener { _, keyCode, event ->
-                if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK) {
-                    focusSearchContent()
-                } else {
-                    false
-                }
-            }
-        }
-
-        binding.btnSearchClear.setOnClickListener {
-            binding.etSearch.setText("")
-                    val isIptv = UserPreferences.currentProvider is IptvProvider
-        val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-        binding.etSearch.hint = getString(hintStringRes)
-            viewModel.search("")
-        }
 
         binding.vgvSearch.apply {
             adapter = appAdapter.apply {
@@ -310,7 +231,7 @@ class SearchTvFragment : Fragment() {
             })
         }
 
-        binding.root.requestFocus()
+        binding.wheelKeyboard.requestFocus()
     }
 
     private fun focusSearchContent(): Boolean {
