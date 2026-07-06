@@ -24,7 +24,10 @@ android {
     compileSdk 36
 
     def properties = new Properties()
-    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+    def localPropertiesFile = project.rootProject.file('local.properties')
+    if (localPropertiesFile.exists()) {
+        properties.load(localPropertiesFile.newDataInputStream())
+    }
 
     defaultConfig {
         applicationId "com.streamflixreborn.streamflix"
@@ -34,6 +37,8 @@ android {
         versionName "1.7.226"
 
         buildConfigField "String", "APP_LAYOUT", "\"${properties.getProperty("APP_LAYOUT")}\""
+        buildConfigField "String", "UPDATE_GITHUB_OWNER", "\"${properties.getProperty("UPDATE_GITHUB_OWNER", "streamflix-reborn")}\""
+        buildConfigField "String", "UPDATE_GITHUB_REPO", "\"${properties.getProperty("UPDATE_GITHUB_REPO", "streamflix")}\""
         buildConfigField "String", "TMDB_API_KEY", "\"${properties.getProperty("TMDB_API_KEY")}\""
         buildConfigField "String", "SUBDL_API_KEY", "\"${properties.getProperty("SUBDL_API_KEY")}\""
         buildConfigField "String", "RABBITSTREAM_SOURCE_API", "\"${properties.getProperty("RABBITSTREAM_SOURCE_API")}\""
