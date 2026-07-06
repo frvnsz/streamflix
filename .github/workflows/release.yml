@@ -63,6 +63,8 @@ jobs:
         run: |
           cat > local.properties <<EOF_PROPS
           APP_LAYOUT=${APP_LAYOUT}
+          UPDATE_GITHUB_OWNER=${GITHUB_REPOSITORY_OWNER}
+          UPDATE_GITHUB_REPO=${GITHUB_REPOSITORY#*/}
           TMDB_API_KEY=${TMDB_API_KEY}
           SUBDL_API_KEY=${SUBDL_API_KEY}
           RABBITSTREAM_SOURCE_API=${RABBITSTREAM_SOURCE_API}

@@ -128,7 +128,7 @@ git tag v1.7.226
 git push origin v1.7.226
 ```
 
-The workflow is defined in `.github/workflows/release.yml`. It can sign release APKs when these repository secrets are configured: `KEYSTORE`, `SIGNING_KEY_ALIAS`, `SIGNING_STORE_PASSWORD`, and `SIGNING_KEY_PASSWORD`. It also reads optional API secrets from `TMDB_API_KEY`, `SUBDL_API_KEY`, and `RABBITSTREAM_SOURCE_API`.
+The workflow is defined in `.github/workflows/release.yml`. It can sign release APKs when these repository secrets are configured: `KEYSTORE`, `SIGNING_KEY_ALIAS`, `SIGNING_STORE_PASSWORD`, and `SIGNING_KEY_PASSWORD`. It also reads optional API secrets from `TMDB_API_KEY`, `SUBDL_API_KEY`, and `RABBITSTREAM_SOURCE_API`. APKs built by GitHub Actions automatically point the in-app updater at the same repository that built them, so a fork publishes updates from its own Releases page.
 
 ### Manual release builds
 
