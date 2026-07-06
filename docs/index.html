@@ -23,18 +23,22 @@
     <h1>Streamflix APK Downloads</h1>
     <p>Download the latest APKs from the project's GitHub Releases. The buttons below always point to the newest release assets.</p>
     <div class="buttons">
-      <a class="button" data-asset="universal" href="../releases/latest">Universal APK</a>
-      <a class="button secondary" data-asset="only-mobile" href="../releases/latest">Mobile APK</a>
-      <a class="button tertiary" data-asset="only-tv" href="../releases/latest">TV APK</a>
+      <a class="button" data-release-link data-asset="universal" href="https://github.com/frvnsz/streamflix/releases/latest">Universal APK</a>
+      <a class="button secondary" data-release-link data-asset="only-mobile" href="https://github.com/frvnsz/streamflix/releases/latest">Mobile APK</a>
+      <a class="button tertiary" data-release-link data-asset="only-tv" href="https://github.com/frvnsz/streamflix/releases/latest">TV APK</a>
     </div>
-    <p>If a direct download button does not start, open the <a href="../releases/latest">latest GitHub Release</a> and download the APK you want from the release assets.</p>
+    <p>If a direct download button does not start, open the <a data-release-link href="https://github.com/frvnsz/streamflix/releases/latest">latest GitHub Release</a> and download the APK you want from the release assets.</p>
     <p>Manual builds are available from GitHub Actions: open <code>Actions → Build & Release APK → Run workflow</code>.</p>
     <footer>Install APKs only from releases you trust. Android may ask you to allow installs from your browser or file manager.</footer>
   </main>
+  <script src="site-config.js"></script>
   <script>
-    const repo = location.hostname.endsWith('github.io')
-      ? `${location.hostname.split('.')[0]}/${location.pathname.split('/').filter(Boolean)[0] || location.hostname.split('.')[0]}`
-      : null;
+    const repo = window.STREAMFLIX_REPOSITORY || 'frvnsz/streamflix';
+    const releaseUrl = `https://github.com/${repo}/releases/latest`;
+
+    document.querySelectorAll('[data-release-link]').forEach((link) => {
+      link.href = releaseUrl;
+    });
 
     if (repo) {
       fetch(`https://api.github.com/repos/${repo}/releases/latest`)
