@@ -1,5 +1,7 @@
 package com.streamflixreborn.streamflix.fragments.search
 
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -47,6 +49,7 @@ class SearchMobileFragment : Fragment() {
     private var appAdapter = AppAdapter()
 
     private lateinit var voiceHelper: VoiceRecognitionHelper
+    private var useWheelKeyboard: Boolean = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -131,45 +134,48 @@ class SearchMobileFragment : Fragment() {
     }
 
     private fun initializeSearch() {
+        useWheelKeyboard = shouldUseWheelKeyboard()
         val isIptv = UserPreferences.currentProvider is IptvProvider
         val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-        binding.etSearch.hint = getString(hintStringRes)
+        val searchHint = getString(hintStringRes)
 
-        binding.etSearch.apply {
-            // ========= LÓGICA DE BÚSQUEDA MODIFICADA =========
-            setOnEditorActionListener { _, actionId, _ ->
-                if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                    val query = binding.etSearch.text.toString()
-                    hideKeyboard()
+        binding.clSearch.visibility = if (useWheelKeyboard) View.GONE else View.VISIBLE
+        binding.wheelKeyboard.visibility = if (useWheelKeyboard) View.VISIBLE else View.GONE
+        binding.etSearch.hint = searchHint
+        binding.wheelKeyboard.hintText = searchHint
 
-                    if (query.isBlank()) {
-                        Toast.makeText(requireContext(), getString(R.string.search_empty_query), Toast.LENGTH_SHORT).show()
-                        return@setOnEditorActionListener true
+        if (useWheelKeyboard) {
+            binding.wheelKeyboard.apply {
+                onTextChanged = { query ->
+                    if (query.isEmpty() && viewModel.query.isNotEmpty()) {
+                        viewModel.search("")
                     }
-
-                    if (binding.swGlobalSearch.isChecked) {
-                        val currentLanguage = UserPreferences.currentProvider?.language ?: "es"
-                        viewModel.searchGlobal(query, currentLanguage)
-                    } else {
-                        viewModel.search(query)
-                    }
-                    return@setOnEditorActionListener true
                 }
-                return@setOnEditorActionListener false
+                onSearch = { query -> submitSearch(query) }
+                onDone = { query -> submitSearch(query) }
+                onVoiceSearch = { if (!voiceHelper.isListening) voiceHelper.startWithPermissionCheck() }
+                requestFocus()
             }
-            // =================================================
-
-            addTextChangedListener(object : TextWatcher {
-                override fun afterTextChanged(s: Editable?) {
-                    if(s.isNullOrBlank()){
-                                val isIptv = UserPreferences.currentProvider is IptvProvider
-        val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-        binding.etSearch.hint = getString(hintStringRes)
+        } else {
+            binding.etSearch.apply {
+                setOnEditorActionListener { _, actionId, _ ->
+                    if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                        hideKeyboard()
+                        return@setOnEditorActionListener submitSearch(text.toString())
                     }
+                    false
                 }
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            })
+
+                addTextChangedListener(object : TextWatcher {
+                    override fun afterTextChanged(s: Editable?) {
+                        if (s.isNullOrBlank()) {
+                            binding.etSearch.hint = searchHint
+                        }
+                    }
+                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                })
+            }
         }
 
         val blink = AlphaAnimation(1f, 0.3f).apply {
@@ -182,27 +188,32 @@ class SearchMobileFragment : Fragment() {
             fragment = this,
             onResult = { query ->
                 binding.btnSearchVoice.clearAnimation()
-                binding.etSearch.setText(query)
+                if (useWheelKeyboard) {
+                    binding.wheelKeyboard.alpha = 1f
+                    binding.wheelKeyboard.setText(query)
+                } else {
+                    binding.etSearch.setText(query)
+                }
                 viewModel.search(query)
             },
             onError = { msg ->
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
                 binding.btnSearchVoice.clearAnimation()
-                        val isIptv = UserPreferences.currentProvider is IptvProvider
-        val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-        binding.etSearch.hint = getString(hintStringRes)
+                binding.wheelKeyboard.alpha = 1f
+                binding.etSearch.hint = searchHint
             },
             onListeningStateChanged = { isListening ->
-                binding.btnSearchVoice.startAnimation(blink)
-                binding.etSearch.hint = getString(R.string.voice_prompt)
+                if (useWheelKeyboard) {
+                    binding.wheelKeyboard.alpha = if (isListening) 0.55f else 1f
+                } else {
+                    if (isListening) binding.btnSearchVoice.startAnimation(blink) else binding.btnSearchVoice.clearAnimation()
+                    binding.etSearch.hint = if (isListening) getString(R.string.voice_prompt) else searchHint
+                }
             }
         )
 
         binding.btnSearchVoice.apply {
-            requestFocus()
-            visibility =
-                if (voiceHelper.isAvailable()) View.VISIBLE else View.GONE
-
+            visibility = if (!useWheelKeyboard && voiceHelper.isAvailable()) View.VISIBLE else View.GONE
             setOnClickListener {
                 if (!voiceHelper.isListening) {
                     voiceHelper.startWithPermissionCheck()
@@ -212,9 +223,7 @@ class SearchMobileFragment : Fragment() {
 
         binding.btnSearchClear.setOnClickListener {
             binding.etSearch.setText("")
-                    val isIptv = UserPreferences.currentProvider is IptvProvider
-        val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-        binding.etSearch.hint = getString(hintStringRes)
+            binding.etSearch.hint = searchHint
             viewModel.search("")
         }
 
@@ -226,6 +235,27 @@ class SearchMobileFragment : Fragment() {
                 SpacingItemDecoration(10.dp(requireContext()))
             )
         }
+    }
+
+    private fun submitSearch(query: String): Boolean {
+        if (query.isBlank()) {
+            Toast.makeText(requireContext(), getString(R.string.search_empty_query), Toast.LENGTH_SHORT).show()
+            return true
+        }
+
+        if (binding.swGlobalSearch.isChecked) {
+            val currentLanguage = UserPreferences.currentProvider?.language ?: "es"
+            viewModel.searchGlobal(query, currentLanguage)
+        } else {
+            viewModel.search(query)
+        }
+        return true
+    }
+
+    private fun shouldUseWheelKeyboard(): Boolean {
+        val uiModeType = resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK
+        return requireContext().packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
+            uiModeType == Configuration.UI_MODE_TYPE_TELEVISION
     }
 
     private fun displaySearch(list: List<AppAdapter.Item>, hasMore: Boolean) {
