@@ -110,6 +110,42 @@ Contributions are what make the open source community such an amazing place to l
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a pull request
 
+
+## Automatic APK builds and downloads
+
+This repository builds APKs automatically with GitHub Actions.
+
+### Automatic release builds
+
+Push a version tag that starts with `v` to build and publish a GitHub Release containing:
+
+- a universal APK
+- a mobile-only APK
+- a TV-only APK
+
+```bash
+git tag v1.7.226
+git push origin v1.7.226
+```
+
+The workflow is defined in `.github/workflows/release.yml`. It can sign release APKs when these repository secrets are configured: `KEYSTORE`, `SIGNING_KEY_ALIAS`, `SIGNING_STORE_PASSWORD`, and `SIGNING_KEY_PASSWORD`. It also reads optional API secrets from `TMDB_API_KEY`, `SUBDL_API_KEY`, and `RABBITSTREAM_SOURCE_API`.
+
+### Manual release builds
+
+You can trigger the same APK build yourself from GitHub:
+
+1. Open the repository on GitHub.
+2. Go to **Actions**.
+3. Select **Build & Release APK**.
+4. Click **Run workflow**.
+5. Optionally enter a version/tag such as `v1.7.226`, then run it.
+
+### Download website
+
+A simple GitHub Pages download website lives in `docs/index.html` and is deployed by `.github/workflows/pages.yml`. After enabling GitHub Pages for this repository, users can open the Pages URL and download the latest APK release from the page.
+
+To enable it in GitHub, go to **Settings → Pages** and choose **GitHub Actions** as the build and deployment source.
+
 ## Legal Disclaimer
 
 **IMPORTANT: This application is for educational and personal use only.**
