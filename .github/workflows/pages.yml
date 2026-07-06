@@ -33,6 +33,10 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      - name: Write site config
+        run: |
+          printf "window.STREAMFLIX_REPOSITORY = '%s';\n" "${GITHUB_REPOSITORY}" > docs/site-config.js
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
