@@ -42,12 +42,17 @@ class MainViewModel : ViewModel() {
             if (newReleases.isEmpty()) return@launch
 
             val asset = newReleases.first().assets
-                .filter { it.contentType == "application/vnd.android.package-archive" }
+                .filter { it.name.endsWith(".apk", ignoreCase = true) }
                 .find {
                     when (BuildConfig.APP_LAYOUT) {
                         "mobile" -> it.name.endsWith("-mobile.apk")
+                            || it.name.endsWith("-only-mobile.apk")
                         "tv" -> it.name.endsWith("-tv.apk")
-                        else -> !it.name.endsWith("-mobile.apk") && !it.name.endsWith("-tv.apk")
+                            || it.name.endsWith("-only-tv.apk")
+                        else -> !it.name.endsWith("-mobile.apk")
+                            && !it.name.endsWith("-only-mobile.apk")
+                            && !it.name.endsWith("-tv.apk")
+                            && !it.name.endsWith("-only-tv.apk")
                     }
                 }
                 ?: throw Exception("Can't find update APK")
